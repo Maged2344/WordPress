@@ -1,0 +1,55 @@
+name: Deploy WordPress
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  package-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Package Code
+        run: |
+          tar -czf app_$(date +%F).tar.gz .
+          mv app_$(date +%F).tar.gz app.tar.gz
+
+      - name: Upload to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 cp app.tar.gz s3://yourname_app/app_$(date +%F).tar.gz
+
+      - name: Deploy to Instances
+        run: |
+          INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-name yourname-app-asg \
+            --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
+            --output text)
+          for INSTANCE in $INSTANCE_IDS; do
+            PUBLIC_IP=$(aws ec2 describe-instances \
+              --instance-ids $INSTANCE \
+              --query 'Reservations[0].Instances[0].PublicIpAddress' \
+              --output text)
+            ssh -i your-key.pem ec2-user@$PUBLIC_IP "bash -s" << EOF
+              wget https://yourname_app.s3.amazonaws.com/app.tar.gz -O /tmp/app.tar.gz
+              tar -xzf /tmp/app.tar.gz -C /tmp/
+              rsync -av /tmp/WordPress/ /var/www/html/
+            EOF
+          done
+
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Expiry Policy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3api put-bucket-lifecycle-configuration --bucket yourname_app \
+          --lifecycle-configuration file://lifecycle.json
