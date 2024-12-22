@@ -65,7 +65,7 @@ jobs:
 
               # Restart the Apache server to apply the changes
               sudo systemctl restart httpd
-EOF
+
           done
 
       # Step 6: Clean up old tarballs from S3 (7-day expiration)
