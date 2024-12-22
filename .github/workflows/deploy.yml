@@ -1,55 +1,90 @@
-name: Deploy WordPress
+name: Deploy WordPress to AWS
 
 on:
   push:
     branches:
-      - main
+      - main  # Trigger workflow on push to main branch
 
 jobs:
-  package-and-deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      - name: Package Code
+      # Step 2: Install dependencies (awscli, rsync, and tar)
+      - name: Install dependencies
         run: |
-          tar -czf app_$(date +%F).tar.gz .
-          mv app_$(date +%F).tar.gz app.tar.gz
+          sudo apt update
+          sudo apt install -y awscli rsync tar
 
-      - name: Upload to S3
+      # Step 3: Package the repo into a tarball with the current date in the filename
+      - name: Package WordPress repository
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          tar -czf "app_${DATE}.tar.gz" --exclude .git .
+        
+      # Step 4: Upload the tarball to the S3 bucket
+      - name: Upload tarball to S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          aws s3 cp app.tar.gz s3://yourname_app/app_$(date +%F).tar.gz
+          DATE=$(date +%Y-%m-%d)
+          aws s3 cp "app_${DATE}.tar.gz" s3://maged-bucket/app_${DATE}.tar.gz
 
-      - name: Deploy to Instances
+      # Step 5: Deploy the tarball to EC2 instances in the Auto Scaling Group
+      - name: Deploy to EC2 Auto Scaling Group
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         run: |
-          INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
-            --auto-scaling-group-name yourname-app-asg \
-            --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
-            --output text)
-          for INSTANCE in $INSTANCE_IDS; do
-            PUBLIC_IP=$(aws ec2 describe-instances \
-              --instance-ids $INSTANCE \
-              --query 'Reservations[0].Instances[0].PublicIpAddress' \
-              --output text)
-            ssh -i your-key.pem ec2-user@$PUBLIC_IP "bash -s" << EOF
-              wget https://yourname_app.s3.amazonaws.com/app.tar.gz -O /tmp/app.tar.gz
-              tar -xzf /tmp/app.tar.gz -C /tmp/
-              rsync -av /tmp/WordPress/ /var/www/html/
-            EOF
+          # Get the instance IDs of all EC2 instances in the Auto Scaling Group
+          INSTANCE_IDS=$(aws ec2 describe-instances --filters "Name=tag:aws:autoscaling:groupName,Values=your-auto-scaling-group" --query "Reservations[*].Instances[*].InstanceId" --output text)
+
+          # Loop through all the instance IDs and deploy the tarball
+          for INSTANCE_ID in $INSTANCE_IDS; do
+            # Get the public IP address of the instance
+            PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+
+            # Copy the tarball to the EC2 instance
+            scp -i /tmp/ssh-key.pem app_${DATE}.tar.gz ubuntu@$PUBLIC_IP:/tmp/
+
+            # SSH into the EC2 instance to extract and deploy the files
+            ssh -i /tmp/ssh-key.pem ubuntu@$PUBLIC_IP <<EOF
+              # Navigate to the web directory and extract the tarball
+              cd /tmp
+              tar -xvzf app_${DATE}.tar.gz -C /var/www/html/
+
+              # Use rsync to sync files to the running application directory
+              sudo rsync -avz /var/www/html/wordpress/ /var/www/html/
+
+              # Restart the Apache server to apply the changes
+              sudo systemctl restart httpd
+EOF
           done
 
-  cleanup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set Expiry Policy
+      # Step 6: Clean up old tarballs from S3 (7-day expiration)
+      - name: Clean up old builds from S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          aws s3api put-bucket-lifecycle-configuration --bucket yourname_app \
-          --lifecycle-configuration file://lifecycle.json
+          aws s3api put-bucket-lifecycle-configuration --bucket yourname_app --lifecycle-configuration '{
+            "Rules": [
+              {
+                "ID": "expire-old-builds",
+                "Filter": {
+                  "Prefix": ""
+                },
+                "Status": "Enabled",
+                "Expiration": {
+                  "Days": 7
+                }
+              }
+            ]
+          }'
