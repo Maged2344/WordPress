@@ -1,9 +1,10 @@
 name: Deploy WordPress to AWS
 
+# Trigger the workflow on any push to any branch
 on:
   push:
     branches:
-      - main  # Trigger workflow on push to main branch
+      - '*'  # Trigger workflow on any push to any branch
 
 jobs:
   build-and-deploy:
