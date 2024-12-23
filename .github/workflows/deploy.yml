@@ -37,7 +37,7 @@ jobs:
         TAR_FILE="app_$DATE.tar.gz"
         
         # Clone the repository or pull latest changes
-        mkdir /tmp
+        
         cd /tmp
         git clone https://github.com/Maged2344/WordPress.git
         cd WordPress
