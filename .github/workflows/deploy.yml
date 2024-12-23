@@ -38,12 +38,12 @@ jobs:
         
         # Clone the repository or pull latest changes
         
-        cd /tmp
-        git clone https://github.com/Maged2344/WordPress.git
-        cd WordPress
-
+        # cd /tmp
+        # git clone https://github.com/Maged2344/WordPress.git
+        # cd WordPress
+        ls
         # Create tarball with the current date
-        tar -czvf /tmp/$TAR_FILE *
+        # tar -czvf /tmp/$TAR_FILE *
       
     # Step 4: Upload tarball to S3
     - name: Upload tarball to S3
