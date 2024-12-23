@@ -88,12 +88,24 @@ jobs:
          
     - name: Download from S3
       run: |
-        # Define the directory to store the downloaded file
-        TAR_DIR="/tmp/wordpress_tarballs"  
+        # Define the date and tarball file variables
+        DATE=$(date +%Y-%m-%d)
+        TAR_DIR="/tmp/wordpress_tarballs"  # Directory to store the downloaded files
         mkdir -p $TAR_DIR
         
-        # Download the first file matching 'app_*' directly from S3
-        aws s3 cp $(aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | head -n 1 | awk '{print $4}') $TAR_DIR/
+        # List all the files starting with "app_" in the S3 bucket
+        echo "Listing all files from S3 matching 'app_*'..."
+        aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | awk '{print $4}' >> /tmp/s3_files_list.txt
+    
+        # Download each file listed in the s3_files_list.txt
+        while read -r file; do
+          echo "Downloading $file from S3..."
+          aws s3 cp s3://maged-bucket/$file $TAR_DIR/
+        done < /tmp/s3_files_list.txt
+        
+        # Optional: Check the contents of the directory
+        echo "Files downloaded:"
+        ls $TAR_DIR/
 
         
         # Step 2: Extract the tarball
