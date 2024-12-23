@@ -1,133 +1,47 @@
-name: Deploy WordPress with LEMP Stack to AWS
+name: Build, Upload and Deploy WordPress
 
 on:
   push:
     branches:
-      - '*'  # Trigger workflow on any push to any branch
+      - main  # Trigger workflow when code is pushed to the 'main' branch
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+    # Step 1: Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      # Step 1: Checkout the repository
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    # Step 2: Set up AWS CLI (for uploading to S3 and EC2 deployment)
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: 'us-east-1'  # Specify the AWS region
 
-      # Step 2: Install dependencies (awscli, rsync, and tar)
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y awscli rsync tar
-
-      # Step 3: Package the repo into a tarball with the current date in the filename
-      - name: Package WordPress repository
-        run: |
-          DATE=$(date +%Y-%m-%d)
-          echo "Creating tarball app_${DATE}.tar.gz"
-
-          # Ensure the repository is clean and no changes are pending
-          git clean -fdx  # Clean untracked files
-          tar --warning=no-file-changed -czf "app_${DATE}.tar.gz" --exclude .git --exclude 'node_modules' --exclude '*.log' --exclude 'tmp' .
+    # Step 3: Install git and create tarball
+    - name: Create tarball
+      run: |
+        DATE=$(date +%Y-%m-%d)
+        TAR_FILE="app_$DATE.tar.gz"
         
-      # Step 4: Upload the tarball to S3
-      # - name: Upload tarball to S3
-      #   env:
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #   run: |
-      #     DATE=$(date +%Y-%m-%d)
-      #     aws s3 cp "app_${DATE}.tar.gz" s3://yourname-app-bucket/app_${DATE}.tar.gz
+        # Clone the repository or pull latest changes
+        cd /tmp
+        git clone https://github.com/Maged2344/WordPress.git
+        cd WordPress
 
-      # # Step 5: Deploy the tarball to EC2 instances in the Auto Scaling Group
-      # - name: Deploy to EC2 Auto Scaling Group
-      #   env:
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-      #   run: |
-      #     # Get the instance IDs of all EC2 instances in the Auto Scaling Group
-      #     INSTANCE_IDS=$(aws ec2 describe-instances --filters "Name=tag:aws:autoscaling:groupName,Values=your-auto-scaling-group" --query "Reservations[*].Instances[*].InstanceId" --output text)
-
-      #     # Loop through all the instance IDs and deploy the tarball
-      #     for INSTANCE_ID in $INSTANCE_IDS; do
-      #       # Get the public IP address of the instance
-      #       PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
-      #       echo "Deploying to instance with Public IP: $PUBLIC_IP"
-
-      #       # Ensure the private key is written to a temporary file
-      #       echo "$EC2_SSH_PRIVATE_KEY" > /tmp/ssh-key.pem
-      #       chmod 600 /tmp/ssh-key.pem
-
-      #       # Copy the tarball to the EC2 instance using SCP
-      #       scp -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem app_${DATE}.tar.gz ubuntu@$PUBLIC_IP:/tmp/
-
-      #       # SSH into the EC2 instance to extract and deploy the files
-      #       ssh -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem ubuntu@$PUBLIC_IP <<EOF
-      #         # Install Nginx, PHP-FPM, and MySQL (if not already installed)
-      #         sudo apt update
-      #         sudo apt install -y nginx php-fpm php-mysql mysql-client
-
-      #         # Start and enable Nginx and PHP-FPM
-      #         sudo systemctl start nginx
-      #         sudo systemctl enable nginx
-      #         sudo systemctl start php8.0-fpm
-      #         sudo systemctl enable php8.0-fpm
-
-      #         # Set up MySQL connection details
-      #         DB_HOST="your-db-host"
-      #         DB_NAME="wordpress"
-      #         DB_USER="wp_user"
-      #         DB_PASSWORD="wp_password"
-
-      #         # Extract the tarball into the web root
-      #         cd /tmp
-      #         tar -xvzf app_${DATE}.tar.gz -C /var/www/html/
-
-      #         # Set up Nginx for WordPress
-      #         sudo cp /var/www/html/wordpress/nginx/wordpress.conf /etc/nginx/sites-available/wordpress
-      #         sudo ln -s /etc/nginx/sites-available/wordpress /etc/nginx/sites-enabled/
-
-      #         # Restart Nginx to apply changes
-      #         sudo systemctl restart nginx
-
-      #         # Set proper permissions for WordPress files
-      #         sudo chown -R www-data:www-data /var/www/html/wordpress
-
-      #         # Set up WordPress configuration
-      #         cd /var/www/html/wordpress
-      #         sudo cp wp-config-sample.php wp-config.php
-      #         sudo sed -i "s/database_name_here/$DB_NAME/" wp-config.php
-      #         sudo sed -i "s/username_here/$DB_USER/" wp-config.php
-      #         sudo sed -i "s/password_here/$DB_PASSWORD/" wp-config.php
-      #         sudo sed -i "s/localhost/$DB_HOST/" wp-config.php
-
-      #         # Restart PHP-FPM
-      #         sudo systemctl restart php8.0-fpm
-      #     EOF
-
-      #       # Clean up the temporary SSH private key file
-      #       rm -f /tmp/ssh-key.pem
-      #     done
-
-      # # Step 6: Clean up old tarballs from S3 (7-day expiration)
-      # - name: Clean up old builds from S3
-      #   env:
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #   run: |
-      #     aws s3api put-bucket-lifecycle-configuration --bucket yourname-app-bucket --lifecycle-configuration '{
-      #       "Rules": [
-      #         {
-      #           "ID": "expire-old-builds",
-      #           "Filter": {
-      #             "Prefix": ""
-      #           },
-      #           "Status": "Enabled",
-      #           "Expiration": {
-      #             "Days": 7
-      #           }
-      #         }
-      #       ]
-      #     }'
+        # Create tarball with the current date
+        tar -czvf /tmp/$TAR_FILE *
+      
+    # Step 4: Upload tarball to S3
+    - name: Upload tarball to S3
+      run: |
+        DATE=$(date +%Y-%m-%d)
+        TAR_FILE="/tmp/app_$DATE.tar.gz"
+        S3_BUCKET="s3://maged-bucket"  # Specify your S3 bucket name
+        
+        # Upload the tarball to S3
+        aws s3 cp $TAR_FILE $S3_BUCKET/
