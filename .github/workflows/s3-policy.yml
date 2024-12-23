@@ -3,7 +3,7 @@ name: S3 Expiry Policy Setup
 on:
   push:
     branches:
-      - master  # Trigger on push to the main branch
+      - master
 
 jobs:
   set-s3-expiry-policy:
@@ -17,16 +17,15 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Adjust to the appropriate region
+          aws-region: us-east-1 
 
       - name: Create S3 Expiry Policy to Delete Builds Older Than 7 Days
         run: |
-          # Define the lifecycle policy as a JSON string
           LIFECYCLE_POLICY='{
             "Rules": [
               {
                 "ID": "Delete old builds after 7 days",
-                "Prefix": "app_",  # Optional: Change prefix to your object pattern if needed
+                "Prefix": "app_",
                 "Status": "Enabled",
                 "Expiration": {
                   "Days": 7
@@ -35,12 +34,10 @@ jobs:
             ]
           }'
 
-          # Apply the lifecycle policy to the S3 bucket
           aws s3api put-bucket-lifecycle-configuration \
             --bucket maged-bucket \
             --lifecycle-configuration "$LIFECYCLE_POLICY"
 
       - name: Confirm S3 Lifecycle Policy
         run: |
-          # Verify the lifecycle policy has been applied correctly
           aws s3api get-bucket-lifecycle-configuration --bucket maged-bucket
