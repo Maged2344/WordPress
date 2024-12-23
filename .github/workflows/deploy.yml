@@ -86,11 +86,16 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: 'us-east-1'  # Specify the AWS region
          
-    - name: download from s3
+    - name: Download from S3
       run: |
+        # Define the date and tarball file variables
+        DATE=$(date +%Y-%m-%d)
+        TAR_FILE="/tmp/app_$DATE.tar.gz"
+        
         # Step 1: Download the tarball from S3
         echo "Downloading tarball from S3..."
-        aws s3 cp s3://maged-bucket/app_$DATE.tar.gz $TAR_FILE
+        aws s3 cp s3://maged-bucket/app_* $TAR_FILE
+
 
         # Step 2: Extract the tarball
         echo "Extracting tarball..."
