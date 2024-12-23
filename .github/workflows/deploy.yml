@@ -88,19 +88,18 @@ jobs:
          
     - name: Download from S3
       run: |
-        # Define the date and tarball file variables
-        DATE=$(date +%Y-%m-%d)
-        TAR_FILE="/tmp/app_$DATE.tar.gz"
+        # Define the directory to store the downloaded file
+        TAR_DIR="/tmp/wordpress_tarballs"  
+        mkdir -p $TAR_DIR
         
-        # Step 1: Download the tarball from S3
-        echo "Downloading tarball from S3..."
-        aws s3 cp s3://maged-bucket/app_* $TAR_FILE
+        # Download the first file matching 'app_*' directly from S3
+        aws s3 cp $(aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | head -n 1 | awk '{print $4}') $TAR_DIR/
 
-
+        
         # Step 2: Extract the tarball
         echo "Extracting tarball..."
         mkdir -p $EXTRACT_PATH
-        tar -xzvf $TAR_FILE -C $EXTRACT_PATH
+        tar -xzvf $TAR_DIR -C $EXTRACT_PATH
 
         # Step 3: Sync new files with WordPress directory
         echo "Syncing files to WordPress directory..."
@@ -109,6 +108,6 @@ jobs:
         # Step 4: Cleanup
         echo "Cleaning up temporary files..."
         rm -rf $EXTRACT_PATH
-        rm $TAR_FILE
+        rm $TAR_DIR
 
         echo "Deployment completed successfully!"
