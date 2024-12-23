@@ -26,8 +26,9 @@ jobs:
       - name: Package WordPress repository
         run: |
           DATE=$(date +%Y-%m-%d)
-          tar -czf "app_${DATE}.tar.gz" --exclude .git .
-        
+          # Add --warning=no-file-changed to prevent errors if files are modified while archiving
+          tar --warning=no-file-changed -czf "app_${DATE}.tar.gz" --exclude .git .
+
       # Step 4: Upload the tarball to the S3 bucket
       - name: Upload tarball to S3
         env:
