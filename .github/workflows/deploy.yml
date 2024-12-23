@@ -1,6 +1,5 @@
 name: Deploy WordPress to AWS
 
-# Trigger the workflow on any push to any branch
 on:
   push:
     branches:
@@ -26,9 +25,15 @@ jobs:
       - name: Package WordPress repository
         run: |
           DATE=$(date +%Y-%m-%d)
-          # Add --warning=no-file-changed to prevent errors if files are modified while archiving
-          tar --warning=no-file-changed -czf "app_${DATE}.tar.gz" --exclude .git .
+          echo "Creating tarball app_${DATE}.tar.gz"
+          
+          # Debugging: List files in the directory to check if any files are causing issues
+          echo "Listing files in the current directory:"
+          ls -la
 
+          # Add --warning=no-file-changed to prevent errors if files are modified while archiving
+          tar --warning=no-file-changed -czf "app_${DATE}.tar.gz" --exclude .git --exclude 'node_modules' --exclude '*.log' --exclude 'tmp' .
+        
       # Step 4: Upload the tarball to the S3 bucket
       - name: Upload tarball to S3
         env:
