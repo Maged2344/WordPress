@@ -74,7 +74,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: 'us-east-1'  # Specify the AWS region
          
-    - name: Download from S3
+    - name: Download from aws S3
       run: |
         # Define the directories
         EXTRACT_PATH="/home/ubuntu/wordpress_build"
