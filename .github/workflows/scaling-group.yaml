@@ -21,6 +21,7 @@ jobs:
 
     - name: Update Instances in Scaling Group
       run: |
+
         echo "Fetching instance IDs from the scaling group..."
         TAR_FILE=$(aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | head -n 1 | awk '{print $4}')
         SCALING_GROUP_NAME="wordpress-scaling"  # Replace with your scaling group name
