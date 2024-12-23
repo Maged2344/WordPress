@@ -19,50 +19,28 @@ jobs:
         aws-region: 'us-east-1'
 
 
-    # Step 3: Update Launch Template with New User Data
-    - name: Update Launch Template with New User Data
+    - name: Update Instances in Scaling Group
       run: |
-        echo "Updating Launch Template with new User Data..."
-
-        # Define the User Data script
-        USER_DATA=$(echo '#!/bin/bash
-        sudo apt update -y
-        sudo apt install awscli -y
-        aws s3 cp s3://maged-bucket/$TAR_FILE /home/ubuntu/
-        sudo tar -xzf /home/ubuntu/$TAR_FILE -C /var/www/html/wordpress
-        sudo systemctl restart nginx
-        ' | base64)
-
-        # Create a new version of the Launch Template with updated User Data
-        NEW_VERSION=$(aws ec2 create-launch-template-version \
-          --launch-template-id lt-00c20bcfeff4c2cd5 \
-          --version-description "Updated with latest app build" \
-          --source-version 1 \
-          --launch-template-data "{\"UserData\": \"$USER_DATA\"}" \
-          --query "LaunchTemplateVersion.VersionNumber" \
+        echo "Fetching instance IDs from the scaling group..."
+        TAR_FILE=$(aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | head -n 1 | awk '{print $4}')
+        SCALING_GROUP_NAME="wordpress-scaling"  # Replace with your scaling group name
+        INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+          --auto-scaling-group-name $SCALING_GROUP_NAME \
+          --query "AutoScalingGroups[0].Instances[].InstanceId" \
           --output text)
 
-        echo "Created new Launch Template version: $NEW_VERSION"
+        echo "Fetched Instance IDs: $INSTANCE_IDS"
 
-    # Step 4: Update Auto Scaling Group to Use New Launch Template Version
-    - name: Update Auto Scaling Group
-      run: |
-        echo "Updating Auto Scaling Group to use new Launch Template version..."
-
-        # Update the Auto Scaling Group to use the new Launch Template version
-        aws autoscaling update-auto-scaling-group \
-          --auto-scaling-group-name wordpress-scaling \
-          --launch-template "LaunchTemplateId=lt-00c20bcfeff4c2cd5,Version=$NEW_VERSION"
-
-        echo "Auto Scaling Group updated successfully."
-
-    # Step 5: Verify Deployment
-    - name: Verify Deployment
-      run: |
-        echo "Waiting for ASG instances to refresh..."
-        sleep 120  # Wait for new instances to launch
-
-        echo "Listing instances in ASG..."
-        aws autoscaling describe-auto-scaling-instances \
-          --query "AutoScalingInstances[*].{InstanceId:InstanceId,State:LifecycleState}" \
-          --output table
+        echo "Sending update command to all instances..."
+        for INSTANCE_ID in $INSTANCE_IDS; do
+          aws ssm send-command \
+            --targets "Key=instanceIds,Values=$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Update WordPress files from S3" \
+            wordpress-scaling
+            --parameters 'commands=["aws s3 cp s3://maged-bucket/$TAR_FILE /home/ubuntu/wordpress_tarballs/", "sudo tar -xzf /home/ubuntu/wordpress_tarballs/$TAR_FILE -C /home/ubuntu/wordpress_build", "sudo rsync -av --delete /home/ubuntu/wordpress_build/ /var/www/html/wordpress/" "sudo systemctl restart nginx"]'
+        done
+        echo "Cleaning up temporary files..."
+        rm -rf $EXTRACT_PATH
+        rm -rf $TAR_DIR
+        echo "Update command sent successfully to all instances."
