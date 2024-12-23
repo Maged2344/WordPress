@@ -37,9 +37,9 @@ jobs:
             --targets "Key=instanceIds,Values=$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --comment "Update WordPress files from S3" \
-            wordpress-scaling
-            --parameters 'commands=["aws s3 cp s3://maged-bucket/$TAR_FILE /home/ubuntu/wordpress_tarballs/", "sudo tar -xzf /home/ubuntu/wordpress_tarballs/$TAR_FILE -C /home/ubuntu/wordpress_build", "sudo rsync -av --delete /home/ubuntu/wordpress_build/ /var/www/html/wordpress/" "sudo systemctl restart nginx"]'
+            --parameters 'commands=["aws s3 cp s3://maged-bucket/$TAR_FILE /home/ubuntu/wordpress_tarballs/", "sudo tar -xzf /home/ubuntu/wordpress_tarballs/$TAR_FILE -C /home/ubuntu/wordpress_build", "sudo rsync -av --delete /home/ubuntu/wordpress_build/ /var/www/html/wordpress/", "sudo systemctl restart nginx"]'
         done
+
         echo "Cleaning up temporary files..."
         rm -rf $EXTRACT_PATH
         rm -rf $TAR_DIR
