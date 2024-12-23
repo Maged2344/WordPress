@@ -33,7 +33,7 @@ jobs:
     
     - name: Create tarball
       run: |
-        DATE=$(date +%Y-%m-%d)
+        DATE=$(date +"%Y-%m-%d_%H-%M")
         TAR_FILE="app_$DATE.tar.gz"
         
         # Clone the repository or pull latest changes
