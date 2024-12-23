@@ -15,6 +15,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Create tarball
+      run: |
+        DATE=$(date +"%Y-%m-%d_%H-%M")
+        TAR_FILE="app_$DATE.tar.gz"
+        
+       
+        # Create tarball with the current date
+        tar -czvf /tmp/$TAR_FILE .
+
     - name: download aws cli
       run: |
         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -29,20 +38,6 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: 'us-east-1'  # Specify the AWS region
-
-    
-    - name: Create tarball
-      run: |
-        DATE=$(date +"%Y-%m-%d_%H-%M")
-        TAR_FILE="app_$DATE.tar.gz"
-        
-        # Clone the repository or pull latest changes
-        
-        cd /tmp
-        git clone https://github.com/Maged2344/WordPress.git
-        cd WordPress
-        # Create tarball with the current date
-        tar -czvf /tmp/$TAR_FILE *
       
     # Step 4: Upload tarball to S3
     - name: Upload tarball to S3
