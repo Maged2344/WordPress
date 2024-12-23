@@ -3,7 +3,7 @@ name: Deploy to Scaling Group
 on:
   push:
     branches:
-      - master  # Trigger this workflow on pushes to the main branch
+      - master  # Trigger this workflow on pushes to the main branchh
 
 jobs:
   deploy-to-scaling-group:
