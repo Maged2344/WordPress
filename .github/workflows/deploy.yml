@@ -52,7 +52,7 @@ jobs:
         TAR_FILE="/tmp/app_$DATE.tar.gz"
         S3_BUCKET="s3://maged-bucket"  # Specify your S3 bucket name
 
-        aws s3 mv s3://maged-bucket s3://maged-bucket-old --recursive
+        aws s3 mv s3://maged-bucket/ s3://maged-bucket-old/ --recursive
 
         
         # Upload the tarball to S3
