@@ -50,16 +50,24 @@ jobs:
           for INSTANCE_ID in $INSTANCE_IDS; do
             # Get the public IP address of the instance
             PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+            echo "Deploying to instance with Public IP: $PUBLIC_IP"
 
-            # Create a temporary SSH private key file from the GitHub secret
+            # Ensure the private key is written to a temporary file
             echo "$EC2_SSH_PRIVATE_KEY" > /tmp/ssh-key.pem
             chmod 600 /tmp/ssh-key.pem
 
-            # Copy the tarball to the EC2 instance
-            scp -i /tmp/ssh-key.pem app_${DATE}.tar.gz ubuntu@$PUBLIC_IP:/tmp/
+            # Debugging - check the file permissions and content
+            echo "Checking SSH private key file permissions:"
+            ls -l /tmp/ssh-key.pem
+            cat /tmp/ssh-key.pem
+
+            # Try copying the tarball to the EC2 instance using SCP
+            echo "Copying tarball to EC2 instance using SCP..."
+            scp -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem app_${DATE}.tar.gz ubuntu@$PUBLIC_IP:/tmp/ || { echo "SCP failed"; exit 1; }
 
             # SSH into the EC2 instance to extract and deploy the files
-            ssh -i /tmp/ssh-key.pem ubuntu@$PUBLIC_IP <<EOF
+            echo "SSH into the EC2 instance to deploy files..."
+            ssh -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem ubuntu@$PUBLIC_IP <<'EOF'
               # Navigate to the web directory and extract the tarball
               cd /tmp
               tar -xvzf app_${DATE}.tar.gz -C /var/www/html/
@@ -69,7 +77,7 @@ jobs:
 
               # Restart the Apache server to apply the changes
               sudo systemctl restart httpd
-
+EOF
 
             # Clean up the temporary SSH private key file
             rm -f /tmp/ssh-key.pem
