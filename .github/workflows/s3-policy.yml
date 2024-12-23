@@ -36,9 +36,9 @@ jobs:
           }'
 
           # Apply the lifecycle policy to the S3 bucket
-          echo "$LIFECYCLE_POLICY" | aws s3api put-bucket-lifecycle-configuration \
+          aws s3api put-bucket-lifecycle-configuration \
             --bucket maged-bucket \
-            --lifecycle-configuration file://-
+            --lifecycle-configuration "$LIFECYCLE_POLICY"
 
       - name: Confirm S3 Lifecycle Policy
         run: |
