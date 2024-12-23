@@ -110,5 +110,5 @@ jobs:
     
         # Step 4: Cleanup
         echo "Cleaning up temporary files..."
-        #rm -rf $EXTRACT_PATH
-        #rm -rf $TAR_DIR
+        rm -rf $EXTRACT_PATH
+        rm -rf $TAR_DIR
