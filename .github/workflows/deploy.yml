@@ -91,7 +91,7 @@ jobs:
         # Define the date and tarball file variables
         DATE=$(date +%Y-%m-%d)
         TAR_DIR="/tmp/wordpress_tarballs"  # Directory to store the downloaded files
-        mkdir -p $TAR_DIR
+        sudo mkdir -p $TAR_DIR
         
         # List all the files starting with "app_" in the S3 bucket
         echo "Listing all files from S3 matching 'app_*'..."
@@ -110,7 +110,7 @@ jobs:
         
         # Step 2: Extract the tarball
         echo "Extracting tarball..."
-        mkdir -p $EXTRACT_PATH
+        sudo mkdir -p $EXTRACT_PATH
         tar -xzvf $TAR_DIR -C $EXTRACT_PATH
 
         # Step 3: Sync new files with WordPress directory
@@ -119,7 +119,7 @@ jobs:
 
         # Step 4: Cleanup
         echo "Cleaning up temporary files..."
-        rm -rf $EXTRACT_PATH
-        rm $TAR_DIR
+        sudo rm -rf $EXTRACT_PATH
+        sudo rm $TAR_DIR
 
         echo "Deployment completed successfully!"
