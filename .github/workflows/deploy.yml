@@ -66,11 +66,6 @@ jobs:
         key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # The private SSH key stored in GitHub secrets
         port: 22  # Default SSH port
         script: |
-          DATE=$(date +%Y-%m-%d)
-          TAR_FILE="/tmp/app_$DATE.tar.gz"
-          EXTRACT_PATH="/tmp/wordpress_build"
-          SOURCE_DIR="$EXTRACT_PATH"
-          DEST_DIR="/var/www/html/wordpress"
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           sudo apt-get update
           sudo apt-get install unzip
@@ -89,9 +84,12 @@ jobs:
     - name: Download from S3
       run: |
         # Define the date and tarball file variables
-        DATE=$(date +%Y-%m-%d)
+
+        EXTRACT_PATH="/home/ubuntu/wordpress_build"
+        SOURCE_DIR="$EXTRACT_PATH"
+        DEST_DIR="/var/www/html/wordpress"
         TAR_DIR="/home/ubuntu/wordpress_tarballs"  # Directory to store the downloaded files
-        sudo mkdir -p $TAR_DIR
+        mkdir -p $TAR_DIR
         
         # List all the files starting with "app_" in the S3 bucket
         echo "Listing all files from S3 matching 'app_*'..."
@@ -110,7 +108,7 @@ jobs:
         
         # Step 2: Extract the tarball
         echo "Extracting tarball..."
-        sudo mkdir -p $EXTRACT_PATH
+        mkdir -p $EXTRACT_PATH
         tar -xzvf $TAR_DIR -C $EXTRACT_PATH
 
         # Step 3: Sync new files with WordPress directory
@@ -119,7 +117,7 @@ jobs:
 
         # Step 4: Cleanup
         echo "Cleaning up temporary files..."
-        sudo rm -rf $EXTRACT_PATH
-        sudo rm $TAR_DIR
+        rm -rf $EXTRACT_PATH
+        rm $TAR_DIR
 
         echo "Deployment completed successfully!"
