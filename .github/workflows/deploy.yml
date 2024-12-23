@@ -88,7 +88,7 @@ jobs:
         SOURCE_DIR="$EXTRACT_PATH"
         DEST_DIR="/var/www/html/wordpress"
         TAR_DIR="/home/ubuntu/wordpress_tarballs"  # Directory to store the downloaded files
-        mkdir -p $TAR_DIR
+        sudo mkdir -p $TAR_DIR
     
         # List and download the first file starting with "app_"
         echo "Listing and downloading the first file from S3 matching 'app_*'..."
@@ -101,7 +101,7 @@ jobs:
     
         # Step 2: Extract the tarball
         echo "Extracting tarball..."
-        mkdir -p $EXTRACT_PATH
+        sudo mkdir -p $EXTRACT_PATH
         tar -xzvf $TAR_DIR/$TAR_FILE -C $EXTRACT_PATH
     
         # Step 3: Sync new files with WordPress directory
