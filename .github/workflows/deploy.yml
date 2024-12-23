@@ -30,7 +30,6 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: 'us-east-1'  # Specify the AWS region
 
-
     - name: Create S3 Expiry Policy to Delete Builds Older Than 7 Days
       run: |
         # Define the lifecycle policy as a JSON string
@@ -38,20 +37,19 @@ jobs:
           "Rules": [
             {
               "ID": "Delete old builds after 7 days",
-              "Prefix": "app_",  # Optional: If your builds are prefixed with 'app_'
+              "Prefix": "app_",  # Optional: Change prefix to your object pattern if needed
               "Status": "Enabled",
               "Expiration": {
                 "Days": 7
-              },
-              "Action": "Delete"
+              }
             }
           ]
         }'
 
-        # Apply the lifecycle policy to your S3 bucket
-        aws s3api put-bucket-lifecycle-configuration \
+        # Apply the lifecycle policy to the S3 bucket
+        echo "$LIFECYCLE_POLICY" | aws s3api put-bucket-lifecycle-configuration \
           --bucket maged-bucket \
-          --lifecycle-configuration "$LIFECYCLE_POLICY"
+          --lifecycle-configuration file://-
 
     - name: Confirm S3 Lifecycle Policy
       run: |
