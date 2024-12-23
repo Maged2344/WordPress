@@ -83,41 +83,32 @@ jobs:
          
     - name: Download from S3
       run: |
-        # Define the date and tarball file variables
-
+        # Define the directories
         EXTRACT_PATH="/home/ubuntu/wordpress_build"
         SOURCE_DIR="$EXTRACT_PATH"
         DEST_DIR="/var/www/html/wordpress"
         TAR_DIR="/home/ubuntu/wordpress_tarballs"  # Directory to store the downloaded files
         mkdir -p $TAR_DIR
-        
-        # List all the files starting with "app_" in the S3 bucket
-        echo "Listing all files from S3 matching 'app_*'..."
-        aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | awk '{print $4}' >> /home/ubuntu/s3_files_list.txt
     
-        # Download each file listed in the s3_files_list.txt
-        while read -r file; do
-          echo "Downloading $file from S3..."
-          aws s3 cp s3://maged-bucket/$file $TAR_DIR/
-        done < /home/ubuntu/s3_files_list.txt
-        
-        # Optional: Check the contents of the directory
+        # List and download the first file starting with "app_"
+        echo "Listing and downloading the first file from S3 matching 'app_*'..."
+        TAR_FILE=$(aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | head -n 1 | awk '{print $4}')
+        aws s3 cp s3://maged-bucket/$TAR_FILE $TAR_DIR/
+    
+        # Optional: Check the contents of the downloaded file
         echo "Files downloaded:"
         ls $TAR_DIR/
-
-        
+    
         # Step 2: Extract the tarball
         echo "Extracting tarball..."
         mkdir -p $EXTRACT_PATH
-        tar -xzvf $TAR_DIR -C $EXTRACT_PATH
-
+        tar -xzvf $TAR_DIR/$TAR_FILE -C $EXTRACT_PATH
+    
         # Step 3: Sync new files with WordPress directory
         echo "Syncing files to WordPress directory..."
         rsync -av --delete $SOURCE_DIR/ $DEST_DIR/
-
+    
         # Step 4: Cleanup
         echo "Cleaning up temporary files..."
         rm -rf $EXTRACT_PATH
-        rm $TAR_DIR
-
-        echo "Deployment completed successfully!"
+        rm -rf $TAR_DIR
