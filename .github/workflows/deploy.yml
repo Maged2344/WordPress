@@ -1,4 +1,4 @@
-name: Deploy WordPress to AWS
+name: Deploy WordPress with LEMP Stack to AWS
 
 on:
   push:
@@ -28,27 +28,17 @@ jobs:
           echo "Creating tarball app_${DATE}.tar.gz"
 
           # Ensure the repository is clean and no changes are pending
-          echo "Checking git status"
-          git status
-
-          # Debugging: List files in the directory to check if any files are causing issues
-          echo "Listing files in the current directory:"
-          ls -la
-
-          # Ensure that all files are committed and nothing is changing while packaging
           git clean -fdx  # Clean untracked files
-
-          # Add --warning=no-file-changed to prevent errors if files are modified while archiving
           tar --warning=no-file-changed -czf "app_${DATE}.tar.gz" --exclude .git --exclude 'node_modules' --exclude '*.log' --exclude 'tmp' .
         
-      # Step 4: Upload the tarball to the S3 bucket
+      # Step 4: Upload the tarball to S3
       - name: Upload tarball to S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           DATE=$(date +%Y-%m-%d)
-          aws s3 cp "app_${DATE}.tar.gz" s3://maged-bucket/app_${DATE}.tar.gz
+          aws s3 cp "app_${DATE}.tar.gz" s3://yourname-app-bucket/app_${DATE}.tar.gz
 
       # Step 5: Deploy the tarball to EC2 instances in the Auto Scaling Group
       - name: Deploy to EC2 Auto Scaling Group
@@ -58,7 +48,7 @@ jobs:
           EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         run: |
           # Get the instance IDs of all EC2 instances in the Auto Scaling Group
-          INSTANCE_IDS=$(aws ec2 describe-instances --filters "Name=tag:aws:autoscaling:groupName,Values=maged-template" --query "Reservations[*].Instances[*].InstanceId" --output text)
+          INSTANCE_IDS=$(aws ec2 describe-instances --filters "Name=tag:aws:autoscaling:groupName,Values=your-auto-scaling-group" --query "Reservations[*].Instances[*].InstanceId" --output text)
 
           # Loop through all the instance IDs and deploy the tarball
           for INSTANCE_ID in $INSTANCE_IDS; do
@@ -70,27 +60,51 @@ jobs:
             echo "$EC2_SSH_PRIVATE_KEY" > /tmp/ssh-key.pem
             chmod 600 /tmp/ssh-key.pem
 
-            # Debugging - check the file permissions and content
-            echo "Checking SSH private key file permissions:"
-            ls -l /tmp/ssh-key.pem
-            cat /tmp/ssh-key.pem
-
-            # Try copying the tarball to the EC2 instance using SCP
-            echo "Copying tarball to EC2 instance using SCP..."
-            scp -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem app_${DATE}.tar.gz ubuntu@$PUBLIC_IP:/tmp/ || { echo "SCP failed"; exit 1; }
+            # Copy the tarball to the EC2 instance using SCP
+            scp -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem app_${DATE}.tar.gz ubuntu@$PUBLIC_IP:/tmp/
 
             # SSH into the EC2 instance to extract and deploy the files
-            echo "SSH into the EC2 instance to deploy files..."
             ssh -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem ubuntu@$PUBLIC_IP <<EOF
-              # Navigate to the web directory and extract the tarball
+              # Install Nginx, PHP-FPM, and MySQL (if not already installed)
+              sudo apt update
+              sudo apt install -y nginx php-fpm php-mysql mysql-client
+
+              # Start and enable Nginx and PHP-FPM
+              sudo systemctl start nginx
+              sudo systemctl enable nginx
+              sudo systemctl start php8.0-fpm
+              sudo systemctl enable php8.0-fpm
+
+              # Set up MySQL connection details
+              DB_HOST="your-db-host"
+              DB_NAME="wordpress"
+              DB_USER="wp_user"
+              DB_PASSWORD="wp_password"
+
+              # Extract the tarball into the web root
               cd /tmp
               tar -xvzf app_${DATE}.tar.gz -C /var/www/html/
 
-              # Use rsync to sync files to the running application directory
-              sudo rsync -avz /var/www/html/wordpress/ /var/www/html/
+              # Set up Nginx for WordPress
+              sudo cp /var/www/html/wordpress/nginx/wordpress.conf /etc/nginx/sites-available/wordpress
+              sudo ln -s /etc/nginx/sites-available/wordpress /etc/nginx/sites-enabled/
 
-              # Restart the Apache server to apply the changes
-              sudo systemctl restart apache2
+              # Restart Nginx to apply changes
+              sudo systemctl restart nginx
+
+              # Set proper permissions for WordPress files
+              sudo chown -R www-data:www-data /var/www/html/wordpress
+
+              # Set up WordPress configuration
+              cd /var/www/html/wordpress
+              sudo cp wp-config-sample.php wp-config.php
+              sudo sed -i "s/database_name_here/$DB_NAME/" wp-config.php
+              sudo sed -i "s/username_here/$DB_USER/" wp-config.php
+              sudo sed -i "s/password_here/$DB_PASSWORD/" wp-config.php
+              sudo sed -i "s/localhost/$DB_HOST/" wp-config.php
+
+              # Restart PHP-FPM
+              sudo systemctl restart php8.0-fpm
           EOF
 
             # Clean up the temporary SSH private key file
@@ -103,7 +117,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          aws s3api put-bucket-lifecycle-configuration --bucket maged-bucket --lifecycle-configuration '{
+          aws s3api put-bucket-lifecycle-configuration --bucket yourname-app-bucket --lifecycle-configuration '{
             "Rules": [
               {
                 "ID": "expire-old-builds",
