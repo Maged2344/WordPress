@@ -69,7 +69,7 @@ jobs:
 
               # Restart the Apache server to apply the changes
               sudo systemctl restart httpd
-EOF
+
 
             # Clean up the temporary SSH private key file
             rm -f /tmp/ssh-key.pem
