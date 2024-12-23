@@ -44,12 +44,16 @@ jobs:
           EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         run: |
           # Get the instance IDs of all EC2 instances in the Auto Scaling Group
-          INSTANCE_IDS=$(aws ec2 describe-instances --filters "Name=tag:aws:autoscaling:groupName,Values=your-auto-scaling-group" --query "Reservations[*].Instances[*].InstanceId" --output text)
+          INSTANCE_IDS=$(aws ec2 describe-instances --filters "Name=tag:aws:autoscaling:groupName,Values=maged-template" --query "Reservations[*].Instances[*].InstanceId" --output text)
 
           # Loop through all the instance IDs and deploy the tarball
           for INSTANCE_ID in $INSTANCE_IDS; do
             # Get the public IP address of the instance
             PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+
+            # Create a temporary SSH private key file from the GitHub secret
+            echo "$EC2_SSH_PRIVATE_KEY" > /tmp/ssh-key.pem
+            chmod 600 /tmp/ssh-key.pem
 
             # Copy the tarball to the EC2 instance
             scp -i /tmp/ssh-key.pem app_${DATE}.tar.gz ubuntu@$PUBLIC_IP:/tmp/
@@ -65,7 +69,10 @@ jobs:
 
               # Restart the Apache server to apply the changes
               sudo systemctl restart httpd
+EOF
 
+            # Clean up the temporary SSH private key file
+            rm -f /tmp/ssh-key.pem
           done
 
       # Step 6: Clean up old tarballs from S3 (7-day expiration)
@@ -74,7 +81,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          aws s3api put-bucket-lifecycle-configuration --bucket yourname_app --lifecycle-configuration '{
+          aws s3api put-bucket-lifecycle-configuration --bucket maged-bucket --lifecycle-configuration '{
             "Rules": [
               {
                 "ID": "expire-old-builds",
