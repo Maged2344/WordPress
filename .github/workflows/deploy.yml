@@ -48,7 +48,7 @@ jobs:
     # Step 4: Upload tarball to S3
     - name: Upload tarball to S3
       run: |
-        DATE=$(date +%Y-%m-%d)
+        DATE=$(date +"%Y-%m-%d_%H-%M")
         TAR_FILE="/tmp/app_$DATE.tar.gz"
         S3_BUCKET="s3://maged-bucket"  # Specify your S3 bucket name
         
