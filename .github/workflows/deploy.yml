@@ -67,7 +67,7 @@ jobs:
 
             # SSH into the EC2 instance to extract and deploy the files
             echo "SSH into the EC2 instance to deploy files..."
-            ssh -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem ubuntu@$PUBLIC_IP <<'EOF'
+            ssh -o StrictHostKeyChecking=no -i /tmp/ssh-key.pem ubuntu@$PUBLIC_IP <<EOF
               # Navigate to the web directory and extract the tarball
               cd /tmp
               tar -xvzf app_${DATE}.tar.gz -C /var/www/html/
@@ -76,8 +76,8 @@ jobs:
               sudo rsync -avz /var/www/html/wordpress/ /var/www/html/
 
               # Restart the Apache server to apply the changes
-              sudo systemctl restart httpd
-EOF
+              sudo systemctl restart apache2
+          EOF
 
             # Clean up the temporary SSH private key file
             rm -f /tmp/ssh-key.pem
