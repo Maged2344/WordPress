@@ -3,7 +3,7 @@ name: S3 Expiry Policy Setup
 on:
   push:
     branches:
-      - main  # Trigger on push to the main branch
+      - master  # Trigger on push to the main branch
 
 jobs:
   set-s3-expiry-policy:
