@@ -1,47 +1,78 @@
-name: Deploy to Scaling Group
+name: Deploy File to EC2 Instances
 
 on:
   push:
     branches:
-      - master  # Trigger this workflow on pushes to the main branchh
+      - master  # Trigger on push to 'main' or any branch you prefer
 
 jobs:
-  deploy-to-scaling-group:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Set up AWS CLI (for uploading to S3 and scaling group operations )
-    - name: Set up AWS CLI
-      uses: aws-actions/configure-aws-credentials@v1
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: 'us-east-1'
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-
-    - name: Update Instances in Scaling Group
+    - name: Get EC2 instance IDs from Auto Scaling Group
+      id: get-instances
       run: |
-
-        echo "Fetching instance IDs from the scaling group..."
-        TAR_FILE=$(aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | head -n 1 | awk '{print $4}')
-        SCALING_GROUP_NAME="wordpress-scaling"  # Replace with your scaling group name
-        INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
-          --auto-scaling-group-name $SCALING_GROUP_NAME \
-          --query "AutoScalingGroups[0].Instances[].InstanceId" \
+        # Get the Auto Scaling Group name
+        asg_name="wordpress-scaling"
+        
+        # Use AWS EC2 API to list instances in the Auto Scaling group
+        instance_ids=$(aws autoscaling describe-auto-scaling-groups \
+          --auto-scaling-group-name $asg_name \
+          --query "AutoScalingGroups[0].Instances[].[InstanceId]" \
           --output text)
 
-        echo "Fetched Instance IDs: $INSTANCE_IDS"
+        # Set instance IDs as an output variable
+        echo "instance_ids=$instance_ids" >> $GITHUB_ENV
 
-        echo "Sending update command to all instances..."
-        for INSTANCE_ID in $INSTANCE_IDS; do
-          aws ssm send-command \
-            --targets "Key=instanceIds,Values=$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Update WordPress files from S3" \
-            --parameters 'commands=["aws s3 cp s3://maged-bucket/$TAR_FILE /home/ubuntu/wordpress_tarballs/", "sudo tar -xzf /home/ubuntu/wordpress_tarballs/$TAR_FILE -C /home/ubuntu/wordpress_build", "sudo rsync -av --delete /home/ubuntu/wordpress_build/ /var/www/html/wordpress/", "sudo systemctl restart nginx"]'
+    - name: Retrieve Public IPs of EC2 Instances
+      run: |
+        # Initialize an empty list for storing the public IPs
+        public_ips=""
+
+        # Loop over each instance ID to get the corresponding public IP
+        for instance_id in ${{ env.instance_ids }}; do
+          public_ip=$(aws ec2 describe-instances --instance-ids $instance_id \
+            --query "Reservations[].Instances[].PublicIpAddress" --output text)
+          
+          # Append the public IP to the list
+          if [ "$public_ip" != "None" ]; then
+            public_ips="$public_ips $public_ip"
+          else
+            echo "No public IP for instance $instance_id"
+          fi
         done
 
-        echo "Cleaning up temporary files..."
-        rm -rf $EXTRACT_PATH
-        rm -rf $TAR_DIR
-        echo "Update command sent successfully to all instances."
+        # Export the public IPs as an environment variable for later use
+        echo "public_ips=$public_ips" >> $GITHUB_ENV
+
+
+    - name: SSH and deploy to EC2 instances
+      run: |
+        # Loop over each public IP and SSH into the EC2 instance to deploy
+        for public_ip in ${{ env.public_ips }}; do
+          echo "Deploying to EC2 instance with public IP: $public_ip"
+          
+          # Create a temporary file for the private key from the GitHub secret
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+
+          # SSH into the EC2 instance and run the deployment commands
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$public_ip << 'EOF'
+            # Download and extract the file from S3
+            aws s3 cp s3://maged-bucket/app_2024-12-23_20-21.tar.gz /var/www/html/app_2024-12-23_20-21.tar.gz
+            tar -xzvf /var/www/html/app_2024-12-23_20-21.tar.gz -C /var/www/html/wordpress
+            rm /var/www/html/app_2024-12-23_20-21.tar.gz
+          EOF
+
+          # Clean up the temporary private key file
+          rm -f private_key.pem
+        done
