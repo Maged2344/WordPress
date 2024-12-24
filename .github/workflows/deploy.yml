@@ -28,13 +28,11 @@ jobs:
     - name: Create tarball
       run: |
         # DATE=$(date +"%Y-%m-%d_%H-%M")
-        # TAR_FILE="app_$DATE.tar.gz"
-        pwd
-       
-      
-        # cd WordPress
-        # Create tarball with the current date
-        # tar -czvf /tmp/$TAR_FILE *
+     
+        mkdir /home/runner/work/wordpress
+        cp -r /home/runner/work/WordPress/WordPress/* /home/runner/work/wordpress
+        cd /home/runner/work/wordpress
+        tar -czvf app_$DATE.tar.gz
       
     # Step 4: Upload tarball to S3
     # - name: Upload tarball to S3
