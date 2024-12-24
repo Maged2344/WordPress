@@ -39,56 +39,56 @@ jobs:
         aws s3 mv s3://maged-bucket/ s3://maged-bucket-old/ --recursive
         aws s3 cp /home/runner/work/maged/app_2024-12-23_20-21.tar.gz s3://maged-bucket/  
 
-    - name: Get EC2 instance IDs from Auto Scaling Group
-      id: get-instances
-      run: |
-        # Get the Auto Scaling Group name
-        asg_name="wordpress-scaling"
+    # - name: Get EC2 instance IDs from Auto Scaling Group
+    #   id: get-instances
+    #   run: |
+    #     # Get the Auto Scaling Group name
+    #     asg_name="wordpress-scaling"
         
-        # Use AWS EC2 API to list instances in the Auto Scaling group
-        instance_ids=$(aws autoscaling describe-auto-scaling-groups \
-          --auto-scaling-group-name $asg_name \
-          --query "AutoScalingGroups[0].Instances[].[InstanceId]" \
-          --output text)
+    #     # Use AWS EC2 API to list instances in the Auto Scaling group
+    #     instance_ids=$(aws autoscaling describe-auto-scaling-groups \
+    #       --auto-scaling-group-name $asg_name \
+    #       --query "AutoScalingGroups[0].Instances[].[InstanceId]" \
+    #       --output text)
 
-        # Set instance IDs as an output variable
-        echo "instance_ids=$instance_ids" >> $GITHUB_ENV
+    #     # Set instance IDs as an output variable
+    #     echo "instance_ids=$instance_ids" >> $GITHUB_ENV
 
-    - name: Retrieve Public IPs of EC2 Instances
-      run: |
-        # Initialize an empty list for storing the public IPs
-        public_ips=""
+    # - name: Retrieve Public IPs of EC2 Instances
+    #   run: |
+    #     # Initialize an empty list for storing the public IPs
+    #     public_ips=""
 
-        # Loop over each instance ID to get the corresponding public IP
-        for instance_id in ${{ env.instance_ids }}; do
-          public_ip=$(aws ec2 describe-instances --instance-ids $instance_id \
-            --query "Reservations[].Instances[].PublicIpAddress" --output text)
+    #     # Loop over each instance ID to get the corresponding public IP
+    #     for instance_id in ${{ env.instance_ids }}; do
+    #       public_ip=$(aws ec2 describe-instances --instance-ids $instance_id \
+    #         --query "Reservations[].Instances[].PublicIpAddress" --output text)
           
-          # Append the public IP to the list
-          if [ "$public_ip" != "None" ]; then
-            public_ips="$public_ips $public_ip"
-          else
-            echo "No public IP for instance $instance_id"
-          fi
-        done
+    #       # Append the public IP to the list
+    #       if [ "$public_ip" != "None" ]; then
+    #         public_ips="$public_ips $public_ip"
+    #       else
+    #         echo "No public IP for instance $instance_id"
+    #       fi
+    #     done
 
-        # Export the public IPs as an environment variable for later use
-        echo "public_ips=$public_ips" >> $GITHUB_ENV
+    #     # Export the public IPs as an environment variable for later use
+    #     echo "public_ips=$public_ips" >> $GITHUB_ENV
 
-    - name: SSH and deploy to EC2 instances
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: ${{ env.public_ips }}  # Use the dynamic list of public IPs
-        username: ubuntu  # Replace with the correct EC2 user (e.g., 'ubuntu' for Ubuntu instances)
-        key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # The private SSH key stored in GitHub secrets
-        port: 22  # Default SSH port
-        script: |  
+    # - name: SSH and deploy to EC2 instances
+    #   uses: appleboy/ssh-action@v0.1.5
+    #   with:
+    #     host: ${{ env.public_ips }}  # Use the dynamic list of public IPs
+    #     username: ubuntu  # Replace with the correct EC2 user (e.g., 'ubuntu' for Ubuntu instances)
+    #     key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # The private SSH key stored in GitHub secrets
+    #     port: 22  # Default SSH port
+    #     script: |  
 
-          sudo mkdir -p /var/www/html/s3-downloads
-          sudo mkdir -p /var/www/html/s3-downloads-extracted
-          sudo aws s3 sync s3://maged-bucket /var/www/html/s3-downloads
-          sudo tar -xzvf /var/www/html/s3-downloads/app_2024-12-23_20-21.tar.gz -C /var/www/html/s3-downloads-extracted
-          sudo rsync -av --delete /var/www/html/s3-downloads-extracted/ /var/www/html/wordpress/  
-          sudo rm -rf /var/www/html/s3-downloads
-          sudo rm -rf /var/www/html/s3-downloads-extracted
+    #       sudo mkdir -p /var/www/html/s3-downloads
+    #       sudo mkdir -p /var/www/html/s3-downloads-extracted
+    #       sudo aws s3 sync s3://maged-bucket /var/www/html/s3-downloads
+    #       sudo tar -xzvf /var/www/html/s3-downloads/app_2024-12-23_20-21.tar.gz -C /var/www/html/s3-downloads-extracted
+    #       sudo rsync -av --delete /var/www/html/s3-downloads-extracted/ /var/www/html/wordpress/  
+    #       sudo rm -rf /var/www/html/s3-downloads
+    #       sudo rm -rf /var/www/html/s3-downloads-extracted
 
