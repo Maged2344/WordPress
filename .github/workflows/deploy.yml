@@ -29,10 +29,8 @@ jobs:
       run: |
         # DATE=$(date +"%Y-%m-%d_%H-%M")
         # TAR_FILE="app_$DATE.tar.gz"
-        mkdir wordpress
-        cp * wordpress/
-        cd wordpress
-        ls
+        pwd
+       
       
         # cd WordPress
         # Create tarball with the current date
