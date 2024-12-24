@@ -37,5 +37,5 @@ jobs:
        
         S3_BUCKET="s3://maged-bucket"  # Specify your S3 bucket name
         aws s3 mv s3://maged-bucket/ s3://maged-bucket-old/ --recursive
-        aws s3 cp app_2024-12-23_20-21.tar.gz s3://maged-bucket/  
+        aws s3 cp /home/runner/work/maged/app_2024-12-23_20-21.tar.gz s3://maged-bucket/  
 
