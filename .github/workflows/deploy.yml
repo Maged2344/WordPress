@@ -82,8 +82,12 @@ jobs:
         username: ubuntu  # Replace with the correct EC2 user (e.g., 'ubuntu' for Ubuntu instances)
         key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # The private SSH key stored in GitHub secrets
         port: 22  # Default SSH port
-        script: |
-          # Download and extract the file from S3
-          sudo aws s3 cp s3://maged-bucket/app_2024-12-23_20-21.tar.gz /var/www/html/app_2024-12-23_20-21.tar.gz
-          sudo tar -xzvf /var/www/html/app_2024-12-23_20-21.tar.gz -C /var/www/html/wordpress
-          sudo rm /var/www/html/app_2024-12-23_20-21.tar.gz    
+        script: |  
+
+          sudo mkdir -p /var/www/html/s3-downloads
+          sudo mkdir -p /var/www/html/s3-downloads-extracted
+          sudo aws s3 sync s3://maged-bucket /var/www/html/s3-downloads
+          sudo tar -xzvf /var/www/html/s3-downloads/app_2024-12-23_20-21.tar.gz -C /var/www/html/s3-downloads-extracted
+          sudo rsync -av --delete /var/www/html/s3-downloads-extracted/ /var/www/html/wordpress/  
+          # sudo rm -rf /tmp/s3-downloads
+
