@@ -12,62 +12,62 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Get EC2 instance IDs from Auto Scaling Group
-      id: get-instances
+      
+    - name: test
       run: |
-        # Get the Auto Scaling Group name
-        asg_name="wordpress-scaling"
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" 
+
+
+    # - name: Get EC2 instance IDs from Auto Scaling Group
+    #   id: get-instances
+    #   run: |
+    #     # Get the Auto Scaling Group name
+    #     asg_name="wordpress-scaling"
         
-        # Use AWS EC2 API to list instances in the Auto Scaling group
-        instance_ids=$(aws autoscaling describe-auto-scaling-groups \
-          --auto-scaling-group-name $asg_name \
-          --query "AutoScalingGroups[0].Instances[].[InstanceId]" \
-          --output text)
+    #     # Use AWS EC2 API to list instances in the Auto Scaling group
+    #     instance_ids=$(aws autoscaling describe-auto-scaling-groups \
+    #       --auto-scaling-group-name $asg_name \
+    #       --query "AutoScalingGroups[0].Instances[].[InstanceId]" \
+    #       --output text)
 
-        # Set instance IDs as an output variable
-        echo "instance_ids=$instance_ids" >> $GITHUB_ENV
+    #     # Set instance IDs as an output variable
+    #     echo "instance_ids=$instance_ids" >> $GITHUB_ENV
 
-    - name: Retrieve Public IPs of EC2 Instances
-      run: |
-        # Initialize an empty list for storing the public IPs
-        public_ips=""
+    # - name: Retrieve Public IPs of EC2 Instances
+    #   run: |
+    #     # Initialize an empty list for storing the public IPs
+    #     public_ips=""
 
-        # Loop over each instance ID to get the corresponding public IP
-        for instance_id in ${{ env.instance_ids }}; do
-          public_ip=$(aws ec2 describe-instances --instance-ids $instance_id \
-            --query "Reservations[].Instances[].PublicIpAddress" --output text)
+    #     # Loop over each instance ID to get the corresponding public IP
+    #     for instance_id in ${{ env.instance_ids }}; do
+    #       public_ip=$(aws ec2 describe-instances --instance-ids $instance_id \
+    #         --query "Reservations[].Instances[].PublicIpAddress" --output text)
           
-          # Append the public IP to the list
-          if [ "$public_ip" != "None" ]; then
-            public_ips="$public_ips $public_ip"
-          else
-            echo "No public IP for instance $instance_id"
-          fi
-        done
+    #       # Append the public IP to the list
+    #       if [ "$public_ip" != "None" ]; then
+    #         public_ips="$public_ips $public_ip"
+    #       else
+    #         echo "No public IP for instance $instance_id"
+    #       fi
+    #     done
 
-        # Export the public IPs as an environment variable for later use
-        echo "public_ips=$public_ips" >> $GITHUB_ENV
+    #     # Export the public IPs as an environment variable for later use
+    #     echo "public_ips=$public_ips" >> $GITHUB_ENV
 
 
-    - name: SSH and deploy to EC2 instances
-      run: |
-        # Loop over each public IP and SSH into the EC2 instance to deploy
-        for public_ip in ${{ env.public_ips }}; do
-          echo "Deploying to EC2 instance with public IP: $public_ip"
+    # - name: SSH and deploy to EC2 instances
+    #   run: |
+    #     # Loop over each public IP and SSH into the EC2 instance to deploy
+    #     for public_ip in ${{ env.public_ips }}; do
+    #       echo "Deploying to EC2 instance with public IP: $public_ip"
       
 
-          # SSH into the EC2 instance and run the deployment commands
-          ssh -o StrictHostKeyChecking=no ubuntu@$public_ip << 'EOF'
-            # Download and extract the file from S3
-            aws s3 cp s3://maged-bucket/app_2024-12-23_20-21.tar.gz /var/www/html/app_2024-12-23_20-21.tar.gz
-            tar -xzvf /var/www/html/app_2024-12-23_20-21.tar.gz -C /var/www/html/wordpress
-            rm /var/www/html/app_2024-12-23_20-21.tar.gz
-          EOF
+    #       # SSH into the EC2 instance and run the deployment commands
+    #       ssh -o StrictHostKeyChecking=no ubuntu@$public_ip << 'EOF'
+    #         # Download and extract the file from S3
+    #         aws s3 cp s3://maged-bucket/app_2024-12-23_20-21.tar.gz /var/www/html/app_2024-12-23_20-21.tar.gz
+    #         tar -xzvf /var/www/html/app_2024-12-23_20-21.tar.gz -C /var/www/html/wordpress
+    #         rm /var/www/html/app_2024-12-23_20-21.tar.gz
+    #       EOF
 
-        done
+    #     done
