@@ -89,5 +89,6 @@ jobs:
           sudo aws s3 sync s3://maged-bucket /var/www/html/s3-downloads
           sudo tar -xzvf /var/www/html/s3-downloads/app_2024-12-23_20-21.tar.gz -C /var/www/html/s3-downloads-extracted
           sudo rsync -av --delete /var/www/html/s3-downloads-extracted/ /var/www/html/wordpress/  
-          # sudo rm -rf /tmp/s3-downloads
+          sudo rm -rf /var/www/html/s3-downloads
+          sudo rm -rf /var/www/html/s3-downloads-extracted
 
