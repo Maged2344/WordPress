@@ -39,7 +39,7 @@ jobs:
        
         S3_BUCKET="s3://maged-bucket" 
         aws s3 mv s3://maged-bucket/wordpress-s3/ s3://maged-bucket/wordpress-s3-old/ --recursive
-        aws s3 cp /home/runner/work/maged/$DATE s3://maged-bucket/wordpress-s3/
+        aws s3 cp /home/runner/work/maged/app_$DATE.tar.gz s3://maged-bucket/wordpress-s3/
 
     # - name: Get EC2 instance IDs from Auto Scaling Group
     #   id: get-instances
