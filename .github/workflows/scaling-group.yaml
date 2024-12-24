@@ -62,11 +62,11 @@ jobs:
           echo "Deploying to EC2 instance with public IP: $public_ip"
           
           # Create a temporary file for the private key from the GitHub secret
-          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private_key.pem
-          chmod 600 private_key.pem
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}"  > ~/.ssh/id_rsa
+          chmod 600  ~/.ssh/id_rsa
 
           # SSH into the EC2 instance and run the deployment commands
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$public_ip << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@$public_ip << 'EOF'
             # Download and extract the file from S3
             aws s3 cp s3://maged-bucket/app_2024-12-23_20-21.tar.gz /var/www/html/app_2024-12-23_20-21.tar.gz
             tar -xzvf /var/www/html/app_2024-12-23_20-21.tar.gz -C /var/www/html/wordpress
@@ -74,5 +74,5 @@ jobs:
           EOF
 
           # Clean up the temporary private key file
-          rm -f private_key.pem
+          rm -f ~/.ssh/id_rsa
         done
