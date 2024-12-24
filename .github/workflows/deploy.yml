@@ -3,7 +3,7 @@ name: Build, Upload and Deploy WordPress
 on:
   push:
     branches:
-      - master  # Trigger workflow when code is pushed to the 'main' branch
+      - master 
 
 jobs:
   build-and-deploy:
@@ -22,25 +22,20 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: 'us-east-1'  # Specify the AWS region
+        aws-region: 'us-east-1'  
 
     
     - name: Create tarball
       run: |
-        # DATE=$(date +"%Y-%m-%d_%H-%M")
-     
-        mkdir /home/runner/work/wordpress
-        cp -r /home/runner/work/WordPress/WordPress/* /home/runner/work/wordpress
-        cd /home/runner/work/wordpress
-        tar -czvf app_2024-12-23_20-21.tar.gz *
+        sudo mkdir /home/runner/work/maged
+        sudo cp -r /home/runner/work/WordPress/WordPress/* /home/runner/work/maged
+        cd /home/runner/work/maged
+        sudo tar -czvf app_2024-12-23_20-21.tar.gz *
       
-
     - name: Upload tarball to S3
       run: |
        
         S3_BUCKET="s3://maged-bucket"  # Specify your S3 bucket name
         aws s3 mv s3://maged-bucket/ s3://maged-bucket-old/ --recursive
-        
-        # Upload the tarball to S3
         aws s3 cp app_2024-12-23_20-21.tar.gz s3://maged-bucket/  
 
