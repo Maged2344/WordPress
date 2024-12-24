@@ -12,7 +12,11 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-
+      
+    - name: Set AWS Region
+      run: |
+        echo "AWS_REGION=us-east-1" >> $GITHUB_ENV  # Replace with your region  
+      
     - name: Get EC2 instance IDs from Auto Scaling Group
       id: get-instances
       run: |
@@ -56,7 +60,6 @@ jobs:
         username: ubuntu  # Replace with the correct EC2 user (e.g., 'ubuntu' for Ubuntu instances)
         key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # The private SSH key stored in GitHub secrets
         port: 22  # Default SSH port
-        aws-region: 'us-east-1'
         script: |
           # Download and extract the file from S3
           aws s3 cp s3://maged-bucket/app_2024-12-23_20-21.tar.gz /var/www/html/app_2024-12-23_20-21.tar.gz
