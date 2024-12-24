@@ -1,112 +1,112 @@
-name: Build, Upload and Deploy WordPress
+# name: Build, Upload and Deploy WordPress
 
-on:
-  push:
-    branches:
-      - master  # Trigger workflow when code is pushed to the 'main' branch
+# on:
+#   push:
+#     branches:
+#       - master  # Trigger workflow when code is pushed to the 'main' branch
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
+#     steps:
 
-    # Step 1: Checkout the repository
-    - name: Checkout code
-      uses: actions/checkout@v2
+#     # Step 1: Checkout the repository
+#     - name: Checkout code
+#       uses: actions/checkout@v2
 
-    - name: download aws cli
-      run: |
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip awscliv2.zip
-        sudo ./aws/install --update
-        aws --version
+#     - name: download aws cli
+#       run: |
+#         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+#         unzip awscliv2.zip
+#         sudo ./aws/install --update
+#         aws --version
     
-    # Step 2: Set up AWS CLI (for uploading to S3 and EC2 deployment)
-    - name: Set up AWS CLI
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: 'us-east-1'  # Specify the AWS region
+#     # Step 2: Set up AWS CLI (for uploading to S3 and EC2 deployment)
+#     - name: Set up AWS CLI
+#       uses: aws-actions/configure-aws-credentials@v1
+#       with:
+#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#         aws-region: 'us-east-1'  # Specify the AWS region
 
     
-    - name: Create tarball
-      run: |
-        DATE=$(date +"%Y-%m-%d_%H-%M")
-        TAR_FILE="app_$DATE.tar.gz"
+#     - name: Create tarball
+#       run: |
+#         DATE=$(date +"%Y-%m-%d_%H-%M")
+#         TAR_FILE="app_$DATE.tar.gz"
         
-        # Clone the repository or pull latest changes
+#         # Clone the repository or pull latest changes
         
-        cd /tmp
-        git clone https://github.com/Maged2344/WordPress.git
-        cd WordPress
-        # Create tarball with the current date
-        tar -czvf /tmp/$TAR_FILE *
+#         cd /tmp
+#         git clone https://github.com/Maged2344/WordPress.git
+#         cd WordPress
+#         # Create tarball with the current date
+#         tar -czvf /tmp/$TAR_FILE *
       
-    # Step 4: Upload tarball to S3
-    - name: Upload tarball to S3
-      run: |
-        DATE=$(date +"%Y-%m-%d_%H-%M")
-        TAR_FILE="/tmp/app_$DATE.tar.gz"
-        S3_BUCKET="s3://maged-bucket"  # Specify your S3 bucket name
-        aws s3 mv s3://maged-bucket/ s3://maged-bucket-old/ --recursive
+#     # Step 4: Upload tarball to S3
+#     - name: Upload tarball to S3
+#       run: |
+#         DATE=$(date +"%Y-%m-%d_%H-%M")
+#         TAR_FILE="/tmp/app_$DATE.tar.gz"
+#         S3_BUCKET="s3://maged-bucket"  # Specify your S3 bucket name
+#         aws s3 mv s3://maged-bucket/ s3://maged-bucket-old/ --recursive
         
-        # Upload the tarball to S3
-        aws s3 cp $TAR_FILE $S3_BUCKET/
+#         # Upload the tarball to S3
+#         aws s3 cp $TAR_FILE $S3_BUCKET/
   
-    # Step 5: SSH into EC2 and Deploy WordPress
-    - name: SSH to EC2 and Deploy
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: 44.204.79.46  # Replace with your EC2 instance IP
-        username: ubuntu  # Replace with your EC2 username (typically 'ubuntu' for Ubuntu instances)
-        key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # The private SSH key stored in GitHub secrets
-        port: 22  # Default SSH port
-        script: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          sudo apt-get update
-          sudo apt-get install unzip
-          unzip awscliv2.zip
-          sudo ./aws/install --update
-          aws --version
+#     # Step 5: SSH into EC2 and Deploy WordPress
+#     - name: SSH to EC2 and Deploy
+#       uses: appleboy/ssh-action@v0.1.5
+#       with:
+#         host: 44.204.79.46  # Replace with your EC2 instance IP
+#         username: ubuntu  # Replace with your EC2 username (typically 'ubuntu' for Ubuntu instances)
+#         key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # The private SSH key stored in GitHub secrets
+#         port: 22  # Default SSH port
+#         script: |
+#           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+#           sudo apt-get update
+#           sudo apt-get install unzip
+#           unzip awscliv2.zip
+#           sudo ./aws/install --update
+#           aws --version
     
-    # Step 2: Set up AWS CLI (for uploading to S3 and EC2 deployment)
-    - name: Set up AWS CLI
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: 'us-east-1'  # Specify the AWS region
+#     # Step 2: Set up AWS CLI (for uploading to S3 and EC2 deployment)
+#     - name: Set up AWS CLI
+#       uses: aws-actions/configure-aws-credentials@v1
+#       with:
+#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#         aws-region: 'us-east-1'  # Specify the AWS region
          
-    - name: Download from S3
-      run: |
-        # Define the directories
-        EXTRACT_PATH="/home/ubuntu/wordpress_build"
-        SOURCE_DIR="$EXTRACT_PATH"
-        DEST_DIR="/var/www/html/wordpress"
-        TAR_DIR="/home/ubuntu/wordpress_tarballs"  # Directory to store the downloaded files
-        sudo mkdir -p $TAR_DIR
+#     - name: Download from S3
+#       run: |
+#         # Define the directories
+#         EXTRACT_PATH="/home/ubuntu/wordpress_build"
+#         SOURCE_DIR="$EXTRACT_PATH"
+#         DEST_DIR="/var/www/html/wordpress"
+#         TAR_DIR="/home/ubuntu/wordpress_tarballs"  # Directory to store the downloaded files
+#         sudo mkdir -p $TAR_DIR
     
-        # List and download the first file starting with "app_"
-        echo "Listing and downloading the first file from S3 matching 'app_*'..."
-        TAR_FILE=$(aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | head -n 1 | awk '{print $4}')
-        aws s3 cp s3://maged-bucket/$TAR_FILE $TAR_DIR/
+#         # List and download the first file starting with "app_"
+#         echo "Listing and downloading the first file from S3 matching 'app_*'..."
+#         TAR_FILE=$(aws s3 ls s3://maged-bucket/ --recursive | grep "app_" | head -n 1 | awk '{print $4}')
+#         aws s3 cp s3://maged-bucket/$TAR_FILE $TAR_DIR/
     
-        # Optional: Check the contents of the downloaded file
-        echo "Files downloaded:"
-        ls $TAR_DIR/
+#         # Optional: Check the contents of the downloaded file
+#         echo "Files downloaded:"
+#         ls $TAR_DIR/
     
-        # Step 2: Extract the tarball
-        echo "Extracting tarball..."
-        sudo mkdir -p $EXTRACT_PATH
-        tar -xzvf $TAR_DIR/$TAR_FILE -C $EXTRACT_PATH
+#         # Step 2: Extract the tarball
+#         echo "Extracting tarball..."
+#         sudo mkdir -p $EXTRACT_PATH
+#         tar -xzvf $TAR_DIR/$TAR_FILE -C $EXTRACT_PATH
     
-        # Step 3: Sync new files with WordPress directory
-        echo "Syncing files to WordPress directory..."
-        sudo rsync -av --delete $SOURCE_DIR/ $DEST_DIR/
+#         # Step 3: Sync new files with WordPress directory
+#         echo "Syncing files to WordPress directory..."
+#         sudo rsync -av --delete $SOURCE_DIR/ $DEST_DIR/
     
-        # Step 4: Cleanup
-        echo "Cleaning up temporary files..."
-        rm -rf $EXTRACT_PATH
-        rm -rf $TAR_DIR
+#         # Step 4: Cleanup
+#         echo "Cleaning up temporary files..."
+#         rm -rf $EXTRACT_PATH
+#         rm -rf $TAR_DIR
