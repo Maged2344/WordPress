@@ -27,17 +27,19 @@ jobs:
     
     - name: Create tar file
       run: |
+
+        DATE=$(date +%Y%m%d_%H%M)
         sudo mkdir /home/runner/work/maged
         sudo cp -r /home/runner/work/WordPress/WordPress/* /home/runner/work/maged
         cd /home/runner/work/maged
-        sudo tar -czvf app_2024-12-23_20-21.tar.gz *
+        sudo tar -czvf app_$DATE.tar.gz *
       
     - name: Upload tar file to S3
       run: |
        
-        S3_BUCKET="s3://maged-bucket"  # Specify your S3 bucket name
+        S3_BUCKET="s3://maged-bucket" 
         aws s3 mv s3://maged-bucket/wordpress-s3/ s3://maged-bucket/wordpress-s3-old/ --recursive
-        aws s3 cp /home/runner/work/maged/app_2024-12-23_20-21.tar.gz s3://maged-bucket/wordpress-s3/
+        aws s3 cp /home/runner/work/maged/$DATE s3://maged-bucket/wordpress-s3/
 
     # - name: Get EC2 instance IDs from Auto Scaling Group
     #   id: get-instances
