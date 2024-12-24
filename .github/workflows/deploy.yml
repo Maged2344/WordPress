@@ -36,7 +36,7 @@ jobs:
       
     - name: Upload tar file to S3
       run: |
-       
+        DATE=$(date +%Y%m%d_%H%M)
         S3_BUCKET="s3://maged-bucket" 
         aws s3 mv s3://maged-bucket/wordpress-s3/ s3://maged-bucket/wordpress-s3-old/ --recursive
         aws s3 cp /home/runner/work/maged/app_$DATE.tar.gz s3://maged-bucket/wordpress-s3/
