@@ -32,7 +32,7 @@ jobs:
         mkdir /home/runner/work/wordpress
         cp -r /home/runner/work/WordPress/WordPress/* /home/runner/work/wordpress
         cd /home/runner/work/wordpress
-        tar -czvf app_$DATE.tar.gz
+        tar -czvf app_$DATE.tar.gz .
       
     # Step 4: Upload tarball to S3
     # - name: Upload tarball to S3
