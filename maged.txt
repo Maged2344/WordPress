@@ -1,2 +1,2 @@
-new file
+anew file
 hello
