@@ -24,6 +24,72 @@
      mkdir -p /wp-content/uploads
      echo "fs-0565b6d3d93dc002d:/ /wp-content/uploads efs defaults,_netdev 0 0" >> /etc/fstab
      mount -a
+     
+      sudo apt update -y
+      sudo apt upgrade -y
+      sudo add-apt-repository ppa:ondrej/php -y
+      sudo apt update -y
+      sudo apt install php8.0 php8.0-fpm php8.0-mysql php8.0-xml php8.0-mbstring php8.0-curl php8.0-zip php8.0-gd -y
+      sudo systemctl start php8.0-fpm
+      sudo systemctl enable php8.0-fpm
+      sudo curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      sudo apt-get install unzip -y
+      sudo unzip awscliv2.zip
+      sudo ./aws/install
+      sudo apt update
+      sudo apt upgrade -y
+      sudo apt install nginx -y
+      sudo bash -c 'cat > /etc/nginx/sites-available/default <<EOF
+      server {
+          listen 80 default_server;
+          listen [::]:80 default_server;
+          root /var/www/html/wordpress;
+          index index.php index.html index.htm;
+          server_name _;
+          location / {
+              try_files \$uri \$uri/ =404;
+          }
+          location ~ \.php$ {
+              include snippets/fastcgi-php.conf;
+              fastcgi_pass unix:/var/run/php/php8.0-fpm.sock;
+              fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+              include fastcgi_params;
+          }
+          location ~ /\.ht {
+              deny all;
+          }
+      }
+      EOF'
+      sudo systemctl restart nginx
+      sudo apt install git -y
+      
+      sudo mkdir /var/www/html/s3-download
+      cd /var/www/html/s3-download
+      sudo aws s3 cp s3://maged-bucket/wordpress-s3/ . --recursive
+      sudo mkdir /var/www/html/wordpress
+      sudo tar -xzvf * -C /var/www/html/wordpress/
+      
+      sudo rm -rf *
+      sudo chown -R www-data:www-data /var/www/html/wordpress
+      sudo chmod -R 755 /var/www/html/wordpress
+      sudo bash -c 'cat > /var/www/html/wordpress/wp-config.php <<EOF
+      <?php
+      define( "DB_NAME", "database-name" );
+      define( "DB_USER", "db_user" );
+      define( "DB_PASSWORD", "password" );
+      define( "DB_HOST", "private-ip" );
+      define( "DB_CHARSET", "utf8mb4" );
+      define( "DB_COLLATE", "" );
+      \$table_prefix  = "wp_";
+      if ( !defined("ABSPATH") )
+          define("ABSPATH", dirname(__FILE__) . "/");
+      require_once(ABSPATH . "wp-settings.php");
+      EOF'
+      sudo systemctl restart nginx
+      sudo nginx -t
+      sudo systemctl restart nginx
+
+
      ```
 
 ### Autoscaling Group Setup
@@ -40,19 +106,20 @@ Create a `.github/workflows/deploy.yml` file incorporating the following steps:
 
 ### 📦 Package Repository
 ```yaml
-- name: 📦 Package Repository
-  run: |
-    mkdir /home/runner/work/build
-    cp -r . /home/runner/work/build
-    cd /home/runner/work/build
-    tar -czvf app_$(date +"%Y%m%d%H%M").tar.gz *
+        DATE=$(date +%Y-%m-%d_%H-%M)
+        sudo mkdir /home/runner/work/maged
+        sudo cp -r /home/runner/work/WordPress/WordPress/* /home/runner/work/maged
+        cd /home/runner/work/maged
+        sudo tar -czvf app_$DATE.tar.gz *
 ```
 
 ### ☁️ Upload to S3
 ```yaml
-- name: ☁️ Upload to S3
-  run: |
-    aws s3 cp app_$(date +"%Y%m%d%H%M").tar.gz s3://yourname_app/
+        DATE=$(date +%Y-%m-%d_%H-%M)
+        S3_BUCKET="s3://maged-bucket" 
+        aws s3 mv s3://maged-bucket/wordpress-s3/ s3://maged-bucket/wordpress-s3-old/ --recursive
+        aws s3 cp /home/runner/work/maged/app_$DATE.tar.gz s3://maged-bucket/wordpress-s3/
+
 ```
 
 ### 🚀 Deploy to Autoscaling Group
@@ -147,7 +214,6 @@ Create a `.github/workflows/deploy.yml` file incorporating the following steps:
 1. Create an 🛡️ IAM role with the following policies:
    - **S3**: `PutObject`, `GetObject`, `DeleteObject`.
    - **EC2**: `DescribeInstances`.
-   - **SSM**: `SendCommand`.
    - **EFS**: `MountTarget`.
 2. Configure OIDC to grant access to the GitHub Actions runner.
 
