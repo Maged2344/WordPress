@@ -212,7 +212,7 @@ Create a `.github/workflows/deploy.yml` file incorporating the following steps:
 
 ## IAM Role for GitHub Workflow
 1. Create an 🛡️ IAM role with the following policies:
-   - **S3**: `PutObject`, `GetObject`, `DeleteObject`.
+   - **S3**: `PutObject`, `GetObject`, `DeleteObject`, `ListBucket`, `GetObjectTagging`.
    - **EC2**: `DescribeInstances`.
    - **EFS**: `MountTarget`.
 2. Configure OIDC to grant access to the GitHub Actions runner.
